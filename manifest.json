@@ -1,0 +1,428 @@
+{
+  "plugin_id": "silo.auth.ldap",
+  "version": "0.1.0",
+  "checksum": "__CHECKSUM__",
+  "silo_api_version": "v1",
+  "category": "Authentication",
+  "presentation": {
+    "display_name": "LDAP Sign-in",
+    "summary": "Let people sign in to Silo with their LDAP or Active Directory password.",
+    "description_markdown": "Checks usernames and passwords against an LDAP directory such as lldap, the authentik LDAP outpost, Active Directory, Samba, FreeIPA, OpenLDAP, Kanidm, or GLAuth. Group rules decide who may sign in and who becomes a Silo admin. Silo re-checks signed-in accounts against the directory, every 12 hours by default (configurable in Silo). When someone is deleted, disabled, or removed from the allowed groups in the directory, the next re-check ends their Silo sessions and updates their role.",
+    "setup_markdown": "1. Pick the **directory type** and enter the directory URL, the service account, and the user base DN.\n2. Optionally list **allowed groups** and **admin groups**.\n3. Run the connection test, with a test username, before enabling sign-in.\n\nUse `ldaps://` or StartTLS: the plugin sends each password to the directory to verify it.",
+    "homepage_url": "https://github.com/Silo-Server/silo-plugin-auth-ldap",
+    "source_url": "https://github.com/Silo-Server/silo-plugin-auth-ldap",
+    "support_url": "https://github.com/Silo-Server/silo-plugin-auth-ldap/issues",
+    "changelog_url": "https://github.com/Silo-Server/silo-plugin-auth-ldap/releases",
+    "publisher_name": "Silo",
+    "publisher_url": "https://github.com/Silo-Server",
+    "license_spdx": "AGPL-3.0-or-later"
+  },
+  "supported_platforms": [
+    {
+      "os": "darwin",
+      "arch": "arm64"
+    },
+    {
+      "os": "linux",
+      "arch": "amd64"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64"
+    }
+  ],
+  "capabilities": [
+    {
+      "type": "auth_provider.v1",
+      "id": "ldap",
+      "display_name": "LDAP",
+      "description": "Username and password sign-in against an LDAP directory.",
+      "auth_modes": [
+        "password"
+      ],
+      "metadata": {
+        "connection_test": true
+      }
+    },
+    {
+      "type": "http_routes.v1",
+      "id": "assets",
+      "display_name": "LDAP assets",
+      "description": "Serves the login button icon."
+    }
+  ],
+  "http_routes": [
+    {
+      "id": "assets",
+      "method": "GET",
+      "path": "/assets/*",
+      "access": "public"
+    }
+  ],
+  "global_config_schema": [
+    {
+      "key": "display_name",
+      "title": "Login button label",
+      "description": "The directory's name, such as \"Company directory\". Silo shows it on the sign-in button and in labels such as \"Company directory password\".",
+      "json_schema": "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"}},\"additionalProperties\":false}",
+      "admin_form": {
+        "submit_label": "Save label",
+        "fields": [
+          {
+            "key": "value",
+            "label": "Button label",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "Company directory",
+            "default_value": "LDAP",
+            "validation": {
+              "max_length": 64
+            }
+          }
+        ]
+      }
+    },
+    {
+      "key": "icon_url_path",
+      "title": "Login button icon",
+      "description": "Icon file served by this plugin under /assets/.",
+      "json_schema": "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"}},\"additionalProperties\":false}",
+      "admin_form": {
+        "submit_label": "Save icon",
+        "fields": [
+          {
+            "key": "value",
+            "label": "Icon",
+            "control": "ADMIN_FORM_CONTROL_SELECT",
+            "default_value": "ldap.svg",
+            "options": [
+              {
+                "value": "ldap.svg",
+                "label": "Directory"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "directory",
+      "title": "Directory connection",
+      "description": "Where the directory is and how the plugin signs in to search it.",
+      "json_schema": "{\"type\":\"object\",\"properties\":{\"preset\":{\"type\":\"string\"},\"urls\":{\"type\":\"string\"},\"start_tls\":{\"type\":\"boolean\"},\"ca_pem\":{\"type\":\"string\"},\"bind_dn\":{\"type\":\"string\"},\"bind_password\":{\"type\":\"string\",\"writeOnly\":true},\"connect_timeout_seconds\":{\"type\":\"number\"},\"request_timeout_seconds\":{\"type\":\"number\"}},\"additionalProperties\":false}",
+      "admin_form": {
+        "submit_label": "Save connection",
+        "fields": [
+          {
+            "key": "preset",
+            "label": "Directory type",
+            "description": "Fills in filters and attribute names for common directories. Every user and group setting you enter overrides it.",
+            "control": "ADMIN_FORM_CONTROL_SELECT",
+            "default_value": "generic",
+            "options": [
+              {
+                "value": "generic",
+                "label": "Generic LDAP",
+                "description": "RFC 4519 schema: uid, mail, displayName, entryUUID, memberOf. List admin groups as full DNs."
+              },
+              {
+                "value": "lldap",
+                "label": "lldap",
+                "description": "Use ldaps://: lldap does not support StartTLS. Groups can be listed by name."
+              },
+              {
+                "value": "authentik",
+                "label": "authentik LDAP outpost",
+                "description": "Use ldaps://: the outpost does not support StartTLS. The service account needs authentik's permission to search the full directory. Groups can be listed by name."
+              },
+              {
+                "value": "active_directory",
+                "label": "Active Directory / Samba",
+                "description": "sAMAccountName and objectGUID. Re-checks catch disabled and expired accounts. memberOf lists direct memberships only; to include nested groups, read groups from a group search. List admin groups as full DNs."
+              },
+              {
+                "value": "freeipa",
+                "label": "FreeIPA",
+                "description": "ipaUniqueID and nsAccountLock. Groups can be listed by name."
+              },
+              {
+                "value": "openldap",
+                "label": "OpenLDAP",
+                "description": "Finds groups by search, with or without the memberOf overlay. List admin groups as full DNs."
+              },
+              {
+                "value": "kanidm",
+                "label": "Kanidm",
+                "description": "LDAPS only. Kanidm's LDAP interface is read-only. Bind the service account as dn=token with an API token of a service account in idm_people_pii_read; without it, searches find no people. Sign-in checks each person's POSIX password, so turn on ldap_allow_unix_pw_bind for the domain and give each person a POSIX password. Re-checks catch expired accounts."
+              },
+              {
+                "value": "glauth",
+                "label": "GLAuth",
+                "description": "Uses uidNumber as the unique ID. Never reuse a uidNumber after deleting a user: the next holder would take over the old Silo account. Users with accountStatus inactive count as disabled."
+              }
+            ]
+          },
+          {
+            "key": "urls",
+            "label": "Directory URLs",
+            "description": "ldap:// or ldaps:// URLs, one per line. The plugin tries them in order and moves on only when a server cannot be reached.",
+            "control": "ADMIN_FORM_CONTROL_TEXTAREA",
+            "placeholder": "ldaps://ldap.example.com:636",
+            "rows": 2,
+            "required": true
+          },
+          {
+            "key": "start_tls",
+            "label": "Use StartTLS",
+            "description": "Upgrade ldap:// connections to TLS before binding. Not for ldaps:// URLs.",
+            "control": "ADMIN_FORM_CONTROL_SWITCH",
+            "default_value": false
+          },
+          {
+            "key": "ca_pem",
+            "label": "CA certificate (PEM)",
+            "description": "Trust this certificate authority in addition to the system roots, for directories with a private CA. Certificate checks cannot be turned off.",
+            "control": "ADMIN_FORM_CONTROL_TEXTAREA",
+            "placeholder": "-----BEGIN CERTIFICATE-----",
+            "rows": 4
+          },
+          {
+            "key": "bind_dn",
+            "label": "Service account DN",
+            "description": "Account the plugin binds as to search for people and groups. Leave blank to search anonymously. Active Directory also accepts a user principal name.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "cn=silo,ou=services,dc=example,dc=com"
+          },
+          {
+            "key": "bind_password",
+            "label": "Service account password",
+            "control": "ADMIN_FORM_CONTROL_PASSWORD",
+            "secret": true
+          },
+          {
+            "key": "connect_timeout_seconds",
+            "label": "Connect timeout (seconds)",
+            "control": "ADMIN_FORM_CONTROL_NUMBER",
+            "default_value": 5,
+            "validation": {
+              "has_min": true,
+              "min": 1,
+              "has_max": true,
+              "max": 120
+            },
+            "description": "Time to wait for each directory URL before trying the next. Silo allows a sign-in about 10 seconds in total, so with several URLs the plugin splits the time left across the ones not yet tried."
+          },
+          {
+            "key": "request_timeout_seconds",
+            "label": "Request timeout (seconds)",
+            "control": "ADMIN_FORM_CONTROL_NUMBER",
+            "default_value": 10,
+            "validation": {
+              "has_min": true,
+              "min": 1,
+              "has_max": true,
+              "max": 120
+            },
+            "description": "Time to wait for each directory answer. Silo allows a sign-in about 10 seconds in total, so larger values have no effect on sign-in."
+          }
+        ]
+      }
+    },
+    {
+      "key": "users",
+      "title": "Users",
+      "description": "How the plugin finds a person and reads their details.",
+      "json_schema": "{\"type\":\"object\",\"properties\":{\"base_dn\":{\"type\":\"string\"},\"filter\":{\"type\":\"string\"},\"username_attribute\":{\"type\":\"string\"},\"email_attribute\":{\"type\":\"string\"},\"display_name_attribute\":{\"type\":\"string\"},\"unique_id_attribute\":{\"type\":\"string\"},\"picture_url_attribute\":{\"type\":\"string\"},\"email_verified\":{\"type\":\"string\"},\"test_username\":{\"type\":\"string\"}},\"additionalProperties\":false}",
+      "admin_form": {
+        "submit_label": "Save user settings",
+        "fields": [
+          {
+            "key": "base_dn",
+            "label": "User base DN",
+            "description": "Subtree to search for people.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "ou=people,dc=example,dc=com",
+            "required": true
+          },
+          {
+            "key": "filter",
+            "label": "User filter",
+            "description": "LDAP filter that finds one person. {username} is replaced with the escaped sign-in name. Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "(&(objectClass=person)(uid={username}))"
+          },
+          {
+            "key": "username_attribute",
+            "label": "Username attribute",
+            "description": "Suggested Silo username. Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "uid"
+          },
+          {
+            "key": "email_attribute",
+            "label": "Email attribute",
+            "description": "Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "mail"
+          },
+          {
+            "key": "display_name_attribute",
+            "label": "Display name attribute",
+            "description": "Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "displayName"
+          },
+          {
+            "key": "unique_id_attribute",
+            "label": "Unique ID attribute",
+            "description": "Immutable ID that links the person to their Silo account, such as entryUUID, objectGUID, ipaUniqueID, or nsUniqueId. Changing it later disconnects existing accounts. Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "entryUUID"
+          },
+          {
+            "key": "picture_url_attribute",
+            "label": "Picture URL attribute",
+            "description": "Optional attribute holding an http(s) URL of the person's picture, such as labeledURI.",
+            "control": "ADMIN_FORM_CONTROL_TEXT"
+          },
+          {
+            "key": "email_verified",
+            "label": "Treat directory email as verified",
+            "description": "Silo only matches existing accounts by email when the address is verified. Choose Verified only if people cannot change their own email in the directory.",
+            "control": "ADMIN_FORM_CONTROL_SELECT",
+            "default_value": "unknown",
+            "options": [
+              {
+                "value": "unknown",
+                "label": "Not stated"
+              },
+              {
+                "value": "verified",
+                "label": "Verified"
+              },
+              {
+                "value": "unverified",
+                "label": "Not verified"
+              }
+            ]
+          },
+          {
+            "key": "test_username",
+            "label": "Test username",
+            "description": "Optional. The connection test looks this person up and shows their groups and role. No password is used.",
+            "control": "ADMIN_FORM_CONTROL_TEXT"
+          }
+        ]
+      }
+    },
+    {
+      "key": "groups",
+      "title": "Groups and access",
+      "description": "Who may sign in and who becomes an admin.",
+      "json_schema": "{\"type\":\"object\",\"properties\":{\"source\":{\"type\":\"string\"},\"membership_attribute\":{\"type\":\"string\"},\"base_dn\":{\"type\":\"string\"},\"filter\":{\"type\":\"string\"},\"name_attribute\":{\"type\":\"string\"},\"allowed_groups\":{\"type\":\"string\"},\"admin_groups\":{\"type\":\"string\"}},\"additionalProperties\":false}",
+      "admin_form": {
+        "submit_label": "Save group settings",
+        "fields": [
+          {
+            "key": "source",
+            "label": "Read groups from",
+            "control": "ADMIN_FORM_CONTROL_SELECT",
+            "default_value": "default",
+            "options": [
+              {
+                "value": "default",
+                "label": "Directory type default"
+              },
+              {
+                "value": "memberof",
+                "label": "The person's memberOf attribute"
+              },
+              {
+                "value": "search",
+                "label": "A group search",
+                "description": "Use this for nested Active Directory groups: the Active Directory group filter follows nesting."
+              }
+            ]
+          },
+          {
+            "key": "membership_attribute",
+            "label": "Membership attribute",
+            "description": "Attribute on the person listing group DNs. Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "memberOf",
+            "show_when": [
+              {
+                "field": "source",
+                "equals": [
+                  "memberof",
+                  "default"
+                ]
+              }
+            ]
+          },
+          {
+            "key": "base_dn",
+            "label": "Group base DN",
+            "description": "Subtree to search for groups. Leave blank to use the user base DN.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "ou=groups,dc=example,dc=com",
+            "show_when": [
+              {
+                "field": "source",
+                "equals": [
+                  "search",
+                  "default"
+                ]
+              }
+            ]
+          },
+          {
+            "key": "filter",
+            "label": "Group filter",
+            "description": "{dn} is replaced with the person's escaped DN and {username} with their escaped username. Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "(&(objectClass=groupOfNames)(member={dn}))",
+            "show_when": [
+              {
+                "field": "source",
+                "equals": [
+                  "search",
+                  "default"
+                ]
+              }
+            ]
+          },
+          {
+            "key": "name_attribute",
+            "label": "Group name attribute",
+            "description": "Leave blank to use the directory type's default.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "cn",
+            "show_when": [
+              {
+                "field": "source",
+                "equals": [
+                  "search",
+                  "default"
+                ]
+              }
+            ]
+          },
+          {
+            "key": "allowed_groups",
+            "label": "Allowed groups",
+            "description": "One group per line, as a name (silo-users) or a full DN. Only members, and members of an admin group, may sign in. A name matches every group of that name, so on Active Directory and OpenLDAP prefer full DNs. Leave empty to let everyone the user filter finds sign in.",
+            "control": "ADMIN_FORM_CONTROL_TEXTAREA",
+            "rows": 3
+          },
+          {
+            "key": "admin_groups",
+            "label": "Admin groups",
+            "description": "One group per line, as a full DN (cn=silo-admins,ou=groups,dc=example,dc=com). Names are accepted only for lldap, authentik, FreeIPA, Kanidm, and GLAuth, where group names are unique across the directory. Members become Silo admins and everyone else becomes a regular user, updated at each sign-in and re-check. Leave empty to manage roles in Silo.",
+            "control": "ADMIN_FORM_CONTROL_TEXTAREA",
+            "rows": 2
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - name: Configure module resolution
+        run: |
+          go env -w GOPROXY=direct
+          go env -w GOPRIVATE=github.com/Silo-Server/*
+          go env -w GONOSUMDB=github.com/Silo-Server/*
+
+      - name: Reject committed SDK replaces
+        run: |
+          # Local SDK work goes through a gitignored go.work, never go.mod.
+          if grep -Eq 'github.com/Silo-Server/silo-plugin-sdk([[:space:]]+v[^[:space:]]+)?[[:space:]]+=>' go.mod; then
+            echo "go.mod replaces silo-plugin-sdk; use a local go.work instead."
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        env:
+          GOWORK: off
+        run: go vet ./...
+
+      - name: Run tests
+        env:
+          GOWORK: off
+        run: go test ./...
+
+      - name: Check the manifest
+        env:
+          GOWORK: off
+        run: |
+          plugin_id="$(go run . manifest | jq -r .pluginId)"
+          if [ "$plugin_id" != "silo.auth.ldap" ]; then
+            echo "plugin ID is ${plugin_id}, want silo.auth.ldap"
+            exit 1
+          fi
+
+  directories:
+    name: Directory containers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - name: Configure module resolution
+        run: |
+          go env -w GOPROXY=direct
+          go env -w GOPRIVATE=github.com/Silo-Server/*
+          go env -w GONOSUMDB=github.com/Silo-Server/*
+
+      - name: Start lldap and OpenLDAP
+        run: |
+          env_file="$(scripts/directory-containers.sh up)"
+          # The passwords are generated for this run; keep them out of the log anyway.
+          grep '_PASSWORD=' "$env_file" | cut -d= -f2- | sed 's/^/::add-mask::/'
+          cat "$env_file" >> "$GITHUB_ENV"
+
+      - name: Run the directory tests
+        env:
+          GOWORK: off
+        run: go test -count=1 -run TestContainerDirectories -v ./ldapauth/
+
+      - name: Show directory logs
+        if: failure()
+        run: |
+          docker logs ldaptest-lldap 2>&1 | tail -100
+          docker logs ldaptest-openldap 2>&1 | tail -100
+
+      - name: Remove the containers
+        if: always()
+        run: scripts/directory-containers.sh down

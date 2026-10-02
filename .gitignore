@@ -1,0 +1,22 @@
+plugin
+dist/
+*.exe
+go.work
+go.work.sum
+.env
+.env.*
+!.env.example
+*.log
+logs/
+.DS_Store
+# Local agent/tooling state
+/.agents/
+/.claude/
+/.local/
+.codex/
+.cursor/
+.worktrees/
+.playwright-mcp/
+
+# Directory containers for TestContainerDirectories
+/.ldaptest/
