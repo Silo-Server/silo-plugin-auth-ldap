@@ -42,18 +42,19 @@ down() {
   rm -rf "$DIR"
 }
 
-# retry <tries> <command...> runs a readiness probe once a second until it
-# succeeds.
+# retry <tries> <label> <command...> runs a readiness probe once a second
+# until it succeeds. The label names it on timeout; the command may carry a
+# password, so it is never printed.
 retry() {
-  local tries=$1
-  shift
+  local tries=$1 label=$2
+  shift 2
   for _ in $(seq "$tries"); do
     if "$@" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
   done
-  echo "timed out waiting for: $*" >&2
+  echo "timed out waiting for $label" >&2
   return 1
 }
 
@@ -81,8 +82,19 @@ up() {
     openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
       -days 2 -extfile ext.cnf -out server.crt 2>/dev/null
     cat server.crt ca.pem > server-chain.pem
-    # osixia generates DH parameters at startup unless given some.
-    openssl dhparam -dsaparam -out dhparam.pem 2048 2>/dev/null
+    # osixia generates DH parameters at startup unless given some. Use the
+    # fixed RFC 7919 ffdhe2048 group: `openssl dhparam -dsaparam` on
+    # OpenSSL 3 writes X9.42 parameters, which slapd's GnuTLS rejects.
+    cat > dhparam.pem <<'DHPARAM'
+-----BEGIN DH PARAMETERS-----
+MIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
++8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a
+87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7
+YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
+7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD
+ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
+-----END DH PARAMETERS-----
+DHPARAM
     chmod 644 ./*
   )
 
@@ -130,8 +142,8 @@ up() {
   docker cp "$DIR/certs/." "$OPENLDAP:/container/service/slapd/assets/certs/"
   docker start "$OPENLDAP" >/dev/null
 
-  retry 90 docker exec "$LLDAP" /app/bootstrap.sh
-  retry 90 docker exec "$OPENLDAP" ldapsearch -x -H ldap://localhost -D "cn=admin,$BASE" -w "$ol_admin" -b "$BASE" -s base
+  retry 90 "lldap bootstrap" docker exec "$LLDAP" /app/bootstrap.sh
+  retry 90 "OpenLDAP" docker exec "$OPENLDAP" ldapsearch -x -H ldap://localhost -D "cn=admin,$BASE" -w "$ol_admin" -b "$BASE" -s base
 
   # OpenLDAP: the memberOf overlay tracks groupOfUniqueNames. silo-viewers
   # (groupOfNames) and silo-posix (posixGroup) are found only by a group
