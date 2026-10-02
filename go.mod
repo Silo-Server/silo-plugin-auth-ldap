@@ -3,7 +3,7 @@ module github.com/Silo-Server/silo-plugin-auth-ldap
 go 1.26.0
 
 require (
-	github.com/Silo-Server/silo-plugin-sdk v0.21.1-0.20261002131610-3906339366f4
+	github.com/Silo-Server/silo-plugin-sdk v0.22.0
 	github.com/go-asn1-ber/asn1-ber v1.5.8
 	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/hashicorp/go-hclog v1.6.3

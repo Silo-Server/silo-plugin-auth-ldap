@@ -1,7 +1,7 @@
 github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 h1:mFRzDkZVAjdal+s7s0MwaRv9igoPqLRdzOLzw/8Xvq8=
 github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358/go.mod h1:chxPXzSsl7ZWRAuOIE23GDNzjWuZquvFlgA8xmpunjU=
-github.com/Silo-Server/silo-plugin-sdk v0.21.1-0.20261002131610-3906339366f4 h1:+9SC+Pmggr6JwFVMXbNaJJJko5pzBEdGdjNOW8E5rak=
-github.com/Silo-Server/silo-plugin-sdk v0.21.1-0.20261002131610-3906339366f4/go.mod h1:abwsCEKuPAAgeAqpNGbwoaut2eQlC/Kj97u89Vvg9qM=
+github.com/Silo-Server/silo-plugin-sdk v0.22.0 h1:4MC3pmH3qJ5eQdKCGdo4hKianaJ7GCrGFmnUaqxb4CQ=
+github.com/Silo-Server/silo-plugin-sdk v0.22.0/go.mod h1:abwsCEKuPAAgeAqpNGbwoaut2eQlC/Kj97u89Vvg9qM=
 github.com/alexbrainman/sspi v0.0.0-20231016080023-1a75b4708caa h1:LHTHcTQiSGT7VVbI0o4wBRNQIgn917usHWOd6VAffYI=
 github.com/alexbrainman/sspi v0.0.0-20231016080023-1a75b4708caa/go.mod h1:cEWa1LVoE5KvSD9ONXsZrj0z6KqySlCCNKHlLzbqAt4=
 github.com/bufbuild/protocompile v0.14.1 h1:iA73zAf/fyljNjQKwYzUHD6AD4R8KMasmwa/FBatYVw=
