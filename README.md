@@ -212,6 +212,11 @@ SSO_LAB_ENV=path/to/lab.env SSO_LAB_CA=path/to/ca.pem make test-lab
 For a local Silo, install the plugin by uploading the binary; the installer
 reads `<binary> manifest`.
 
+## Releases
+
+Releases are signed with GitHub artifact attestations. [CONTRIBUTING.md](CONTRIBUTING.md#release)
+describes how maintainers cut a release and how to verify a downloaded binary.
+
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
